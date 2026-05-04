@@ -6,14 +6,7 @@ from typing import List, Optional, Tuple, Dict
 
 
 class CausalConv1d(nn.Module):
-    """
-    Causal 1D convolution.
 
-    The output at time t only depends on current and historical samples.
-    This is used in the fNIRS branch to model delayed hemodynamic responses
-    through a causal receptive field, rather than by imposing a fixed
-    physiological delay or manual temporal shift.
-    """
     def __init__(
         self,
         in_ch: int,
@@ -60,16 +53,7 @@ class PositionalEncoding(nn.Module):
 
 
 class TemporalAttentionPool(nn.Module):
-    """
-    Attention pooling over temporal samples inside one local window.
 
-    Input:
-        x: [B, D, L]
-
-    Output:
-        vec:  [B, D]
-        attn: [B, L]
-    """
     def __init__(self, D: int):
         super().__init__()
 
@@ -86,9 +70,7 @@ class TemporalAttentionPool(nn.Module):
 
 
 class LearnableMissingToken(nn.Module):
-    """
-    Learnable modality-specific missing tokens.
-    """
+ 
     def __init__(self, D: int, modalities: List[str]):
         super().__init__()
 
@@ -108,11 +90,7 @@ class LearnableMissingToken(nn.Module):
 
 
 class EEGBranch(nn.Module):
-    """
-    EEG branch.
 
-    EEG is encoded using a non-causal 1D-CNN.
-    """
     def __init__(self, C_eeg: int = 42, D: int = 128):
         super().__init__()
 
@@ -157,11 +135,7 @@ class EEGBranch(nn.Module):
 
 
 class EyeBranch(nn.Module):
-    """
-    Eye-tracking branch.
 
-    Eye-tracking signals are encoded using a non-causal 1D-CNN.
-    """
     def __init__(self, C_eye: int = 11, D: int = 128):
         super().__init__()
 
@@ -186,23 +160,7 @@ class EyeBranch(nn.Module):
 
 
 class FNIRSBranch(nn.Module):
-    """
-    fNIRS branch.
 
-    fNIRS responses are modeled using a 12-s causal receptive field ending
-    at the current 4-s reference window, without imposing a fixed
-    physiological delay.
-
-    Expected input:
-        x: [W, C_fnirs, T_context]
-
-    W:
-        Number of reference steps/windows in the current flight phase.
-
-    T_context:
-        fNIRS temporal context ending at each reference step. In the
-        manuscript setting, this corresponds to a 12-s causal receptive field.
-    """
     def __init__(self, C_fnirs: int = 22, D: int = 128):
         super().__init__()
 
@@ -232,17 +190,7 @@ class FNIRSBranch(nn.Module):
 
 
 class SAFModule(nn.Module):
-    """
-    Semantically Asynchronous Fusion module.
 
-    This follows the manuscript formula:
-
-        beta_m = softmax(phi_m(u_m))
-        v      = sum_m beta_m * u_m
-
-    Fusion is performed at the window/reference-step representation level,
-    without enforcing sample-level physiological synchrony.
-    """
     def __init__(self, D: int = 128, n_modalities: int = 3):
         super().__init__()
 
@@ -279,12 +227,7 @@ class SAFModule(nn.Module):
 
 
 class WindowAttentionPool(nn.Module):
-    """
-    Window-attention pooling within each flight phase.
 
-        alpha^(s,t) = softmax(psi(v^(s,t)))
-        h^(s)       = sum_t alpha^(s,t) v^(s,t)
-    """
     def __init__(self, D: int = 128):
         super().__init__()
 
@@ -305,13 +248,7 @@ class WindowAttentionPool(nn.Module):
 
 
 class DisentangleEncoder(nn.Module):
-    """
-    Variational disentanglement module.
 
-    The phase-level multimodal representation h^(s) is mapped into:
-        z_f^(s): fatigue-related latent variable
-        z_w^(s): task-progress/workload-related latent variable
-    """
     def __init__(self, D: int = 128):
         super().__init__()
 
@@ -346,12 +283,7 @@ class DisentangleEncoder(nn.Module):
         mu: torch.Tensor,
         logv: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Standard Gaussian KL divergence:
 
-            D_KL(q(z|h) || p(z))
-            = -1/2 sum_i (1 + log sigma_i^2 - mu_i^2 - sigma_i^2)
-        """
         return -0.5 * (1 + logv - mu.pow(2) - logv.exp()).sum()
 
     def forward(
@@ -378,11 +310,7 @@ class DisentangleEncoder(nn.Module):
 
 
 class OrthogonalConstraint(nn.Module):
-    """
-    Orthogonality loss:
 
-        L_orth = || (1/T) Z_f^T Z_w ||_F^2
-    """
     def forward(
         self,
         z_f: torch.Tensor,
@@ -394,11 +322,7 @@ class OrthogonalConstraint(nn.Module):
 
 
 class CausalStageTransformer(nn.Module):
-    """
-    Causal stage Transformer.
 
-    The representation of phase s can only attend to phases 1,...,s.
-    """
     def __init__(
         self,
         D: int = 64,
@@ -449,13 +373,7 @@ class CausalStageTransformer(nn.Module):
 
 
 class FatigueProcessPrototype(nn.Module):
-    """
-    Fatigue-process prototype matching.
 
-    For each class c in {0, 1}, a learnable prototype sequence P_c is used.
-    Soft matching is performed between the input fatigue-process sequence and
-    each class prototype.
-    """
     def __init__(
         self,
         D: int = 64,
@@ -515,12 +433,7 @@ class FatigueProcessPrototype(nn.Module):
 
 
 class StagewiseFatigueIndicator(nn.Module):
-    """
-    Stage-wise Fatigue Indicator module.
 
-    Structure:
-        Linear -> GELU -> Linear -> Sigmoid
-    """
     def __init__(self, D_z: int = 64):
         super().__init__()
 
@@ -536,23 +449,7 @@ class StagewiseFatigueIndicator(nn.Module):
 
 
 class SADFPM(nn.Module):
-    """
-    Semantic Asynchronous Disentangled Fatigue Process Modeling.
-
-    Main components:
-        1. Modality-specific EEG, eye-tracking, and fNIRS encoders.
-        2. Semantically Asynchronous Fusion.
-        3. Task-progress-constrained variational disentanglement.
-        4. Causal stage Transformer.
-        5. Fatigue-process prototype matching.
-        6. Stage-wise Fatigue Indicator.
-
-    fNIRS setting:
-        All modalities are organized by the same 4-s reference step for
-        window-level correspondence. fNIRS responses are encoded using a
-        12-s causal receptive field ending at the current 4-s reference
-        window, without imposing a fixed physiological delay.
-    """
+ 
     def __init__(
         self,
         C_eeg: int = 42,
@@ -568,52 +465,7 @@ class SADFPM(nn.Module):
         fnirs_context_windows: int = 3,
         fnirs_context_mode: str = "auto",
     ):
-        """
-        Args:
-            C_eeg:
-                Number of EEG channels.
-            T_eeg:
-                Number of EEG samples in the 4-s reference window.
-            C_eye:
-                Number of eye-tracking channels/features.
-            T_eye:
-                Number of eye-tracking samples in the 4-s reference window.
-            C_fnirs:
-                Number of fNIRS channels.
-            T_fnirs:
-                Number of fNIRS samples in the 12-s causal context.
-            D:
-                Hidden feature dimension. The manuscript setting is D=128.
-            D_z:
-                Latent dimension for z_f and z_w. The manuscript setting is
-                D_z = D / 2.
-            n_stages:
-                Number of flight phases. This is kept configurable because it
-                must match the preprocessing output.
-            dropout:
-                Dropout probability.
-            fnirs_context_windows:
-                Number of 4-s fNIRS reference windows used to build the causal
-                fNIRS context when the input contains only 4-s fNIRS windows.
-                The default value 3 corresponds to a 12-s causal receptive
-                field.
-            fnirs_context_mode:
-                "auto":
-                    Treat fNIRS input as pre-built 12-s context if its temporal
-                    length is close to T_fnirs; otherwise build the context from
-                    current and historical reference windows.
-                "prebuilt":
-                    The fNIRS input is already the 12-s causal context ending
-                    at each reference window.
-                "build":
-                    Always build the 12-s causal context from current and
-                    historical fNIRS reference windows.
-
-        Note:
-            Building a 12-s causal context is not equivalent to applying a
-            fixed physiological delay. The context only defines the maximum
-            historical receptive field available to the causal fNIRS encoder.
-        """
+        
         super().__init__()
 
         if D_z != D // 2:
@@ -690,26 +542,7 @@ class SADFPM(nn.Module):
         self,
         fnirs: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Build the fNIRS causal context for each reference step.
-
-        Input:
-            fnirs: [W, C_fnirs, L_ref]
-
-        Output:
-            context: [W, C_fnirs, K * L_ref]
-
-        For each reference step t, the context is:
-
-            [t-K+1, ..., t-1, t]
-
-        where K = fnirs_context_windows.
-
-        Missing historical windows at the beginning of a phase are padded with
-        zeros. This operation does not shift fNIRS relative to other modalities;
-        it only gives the causal fNIRS encoder access to historical fNIRS
-        samples ending at the current reference step.
-        """
+       
         if fnirs.dim() != 3:
             raise ValueError(
                 "fNIRS input must have shape [W, C_fnirs, T]."
@@ -739,17 +572,7 @@ class SADFPM(nn.Module):
         self,
         fnirs: Optional[torch.Tensor]
     ) -> Optional[torch.Tensor]:
-        """
-        Prepare fNIRS input for the causal fNIRS branch.
-
-        The model supports both preprocessing strategies:
-            1. The dataset already provides 12-s causal fNIRS context.
-            2. The dataset provides 4-s fNIRS reference windows and the model
-               builds the 12-s causal context internally.
-
-        In both cases, the resulting fNIRS representation is computed from a
-        causal receptive field ending at the current 4-s reference window.
-        """
+       
         if fnirs is None:
             return None
 
@@ -1010,19 +833,7 @@ class SADFPM(nn.Module):
 
 
 class SADFPMLoss(nn.Module):
-    """
-    Joint SAD-FPM objective:
-
-        L = L_cls
-            + lambda_prog   L_prog
-            + lambda_mono   L_mono
-            + lambda_smooth L_smooth
-            + lambda_KL     L_KL
-            + lambda_orth   L_orth
-
-    L_mono is label-gated and mainly applied to fatigue sessions.
-    L_smooth is applied to the latent stage-wise fatigue scores.
-    """
+   
     def __init__(
         self,
         lambda_prog: float = 0.1,
